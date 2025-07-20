@@ -4,8 +4,8 @@ import os
 import uvicorn
 import shutil
 import uuid
-from indexing import indexing
-from retrieval import chat
+from indexing_graph import indexing
+from retrieval_graph import chat
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -15,7 +15,7 @@ UPLOAD_DIRECTORY = "uploaded_pdfs"
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
 @app.post("/uploadpdf/")
-async def upload_pdf(file: UploadFile = File(...)):
+def upload_pdf(file: UploadFile = File(...)):
     
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
@@ -36,7 +36,7 @@ class FileRequest(BaseModel):
     file_name: str
 
 @app.post("/chat_setup/")
-async def chat_setup(request: FileRequest):
+def chat_setup(request: FileRequest):
     try:
         indexing(request.file_name)
         chat_id = str(uuid.uuid4())
@@ -56,10 +56,10 @@ class ChatRequest(BaseModel):
 @app.post("/chatting/")
 async def chatting(request:ChatRequest):
     try:
-        reponse = chat(chat_id=request.chat_id, user_prompt=request.message, file_name=request.file_name)
+        response = await chat(chat_id=request.chat_id, query=request.message, file_name=request.file_name)
         return JSONResponse(
                 status_code=200,
-                content={"message": reponse}
+                content={"message": response}
             )
     except Exception as e:
         raise HTTPException(status_code=301, detail=f"Could not generate the response: {e}") 
